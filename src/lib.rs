@@ -17,17 +17,31 @@ pub enum Key {
     Range,
 }
 
+#[derive(Debug)]
+pub struct IndexKey {
+    pub field: String,
+    pub composite: String,
+}
+
+#[derive(Debug)]
+pub struct IndexKeys {
+    pub hash: IndexKey,
+    pub range: IndexKey,
+}
+
 pub trait LigmaEntity {
-    fn index_key(&self, index: Index, key: Key);
+    // todo: index_key_attribute_value
+    fn index_key(&self, index: Index, key: Key) -> IndexKey;
+    fn index_keys(&self, index: Index) -> IndexKeys;
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+// todo: better tests lmao
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     #[test]
+//     fn it_works() {
+//         let result = add(2, 2);
+//         assert_eq!(result, 4);
+//     }
+// }

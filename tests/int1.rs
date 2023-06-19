@@ -22,9 +22,9 @@ struct Foo {
     foo_string3: String,
     #[ligma_attribute(index = "gsi1", key = "hash")]
     foo_string4: String,
-    #[ligma_attribute(index = "gsi1", key = "range")]
     foo_string5: String,
     foo_string6: String,
+    #[ligma_attribute(index = "gsi1", key = "range")]
     foo_num1: f64,
     #[ligma_ignore(ignore)]
     bar: Bar,
@@ -45,7 +45,11 @@ fn test1() {
         },
     };
 
-    a.index_key(Index::Gsi1, Key::Range);
+    let b = a.index_key(Index::Gsi1, Key::Range);
+    let c = a.index_keys(Index::Primary);
+
+    println!("{:#?}", b);
+    println!("{:#?}", c);
 
     // let e = FooIndex::Gsi1;
     // let aaa = FOO_GSI1;

@@ -6,6 +6,8 @@ use quote::{format_ident, quote, ToTokens};
 use std::{collections::HashMap, fmt::Debug};
 use syn::{DeriveInput, Field, Ident, Result};
 
+////////////////////////////////////////////////////////////////////////////////
+/// attribute helpers
 #[derive(Attribute, Debug)]
 #[attribute(ident = ligma_schema)]
 // #[attribute(invalid_field = "ok")]
@@ -42,33 +44,16 @@ struct LigmaIgnore {
     #[attribute(optional = false, default = true)]
     ignore: bool,
 }
-
-// fn all_attrs<T: Attribute + AttributeIdent + Debug>(input: TokenStream) -> Result<TokenStream> {
-//     let DeriveInput { attrs, data, .. } = syn::parse(input)?;
-//     let a = T::from_attributes(&attrs)?;
-//     println!("{:#?}", a);
-//     Ok(TokenStream::new())
-// }
-
-// enum Index {
-//     Primary,
-//     Gsi1,
-//     Gsi2,
-// }
+////////////////////////////////////////////////////////////////////////////////
 
 struct IndexKeys {
     index: Ident,
-    hash: Key,
-    range: Key,
+    hash: IndexKey,
+    range: IndexKey,
 }
 
-// enum IndexKey {
-//     Hash(Key),
-//     Range(Key),
-// }
-
 #[derive(Default)]
-struct Key {
+struct IndexKey {
     field: String,
     composite: Vec<Composite>,
 }
@@ -78,6 +63,8 @@ struct Composite {
     syn_field: Field,
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// helper macros
 macro_rules! insert_index {
     ($map: ident, $name: expr, $hash: expr, $range: expr, $index: expr) => {
         $map.insert(
@@ -85,11 +72,11 @@ macro_rules! insert_index {
             IndexKeys {
                 // index: Index::$index,
                 index: format_ident!($index),
-                hash: Key {
+                hash: IndexKey {
                     field: $hash,
                     ..Default::default()
                 },
-                range: Key {
+                range: IndexKey {
                     field: $range,
                     ..Default::default()
                 },
@@ -105,6 +92,28 @@ macro_rules! insert_gsi {
         }
     };
 }
+
+macro_rules! compose_key {
+    ($index_key: expr) => {{
+        let mut composed = quote! {};
+        for (i, _) in $index_key.composite.iter().enumerate() {
+            let composite = $index_key
+                .composite
+                .iter()
+                .find(|c| c.position == i)
+                .unwrap();
+            let ident = composite.syn_field.ident.clone().unwrap();
+            let ident_string = ident.to_string();
+
+            composed = quote! {
+                #composed
+                composed.push_str(&format!("#{}_{}", #ident_string, self.#ident));
+            };
+        }
+        composed
+    }};
+}
+////////////////////////////////////////////////////////////////////////////////
 
 #[proc_macro_derive(LigmaEntity, attributes(ligma_schema, ligma_attribute, ligma_ignore))]
 pub fn derive(input: TokenStream) -> TokenStream {
@@ -168,93 +177,98 @@ pub fn derive(input: TokenStream) -> TokenStream {
         }
     }
 
-    let mut index_match_arms = quote! {};
+    let mut index_key_match = quote! {};
+    let mut index_keys_match = quote! {};
     for (k, v) in m.iter() {
+        let hash_composite = compose_key!(v.hash);
+        let range_composite = compose_key!(v.range);
+
         let index = v.index.clone();
         let service = s.service.clone();
         let entity = s.entity.clone();
+        let hash_field = v.hash.field.clone();
+        let range_field = v.range.field.clone();
 
-        let mut hash_composite = quote! {};
-        for (i, _) in v.hash.composite.iter().enumerate() {
-            let composite = v.hash.composite.iter().find(|c| c.position == i).unwrap();
-            let ident = composite.syn_field.ident.clone().unwrap();
-            let ident_string = ident.to_string();
-
-            hash_composite = quote! {
-                #hash_composite
-                something.push_str(&format!("#{}_{}", #ident_string, self.#ident));
-            };
-        }
-
-        let mut range_composite = quote! {};
-        for (i, _) in v.range.composite.iter().enumerate() {
-            let composite = v.range.composite.iter().find(|c| c.position == i).unwrap();
-            let ident = composite.syn_field.ident.clone().unwrap();
-            let ident_string = ident.to_string();
-
-            range_composite = quote! {
-                #range_composite
-                something.push_str(&format!("#{}_{}", #ident_string, self.#ident));
-            };
-        }
-
-        index_match_arms = quote! {
-            #index_match_arms
+        index_key_match = quote! {
+            #index_key_match
             Index::#index => {
-                let mut something = String::new();
+                let mut composed = String::new();
                 match key {
                     Key::Hash => {
-                        something.push_str(&format!("${}#{}", #service, #entity));
+                        composed.push_str(&format!("${}#{}", #service, #entity));
                         #hash_composite
+                        return IndexKey {
+                            field: #hash_field.to_string(),
+                            composite: composed,
+                        }
                     }
                     Key::Range => {
-                        something.push_str(&format!("${}", #entity));
+                        composed.push_str(&format!("${}", #entity));
                         #range_composite
+                        return IndexKey {
+                            field: #range_field.to_string(),
+                            composite: composed,
+                        }
                     }
                 }
-                println!("{}", something);
-                println!("{}", something);
-                println!("{}", something);
-                println!("{}", something);
-                println!("{}", something);
             }
         };
+
+        index_keys_match = quote! {
+            #index_keys_match
+            Index::#index => {
+                return IndexKeys {
+                    hash: self.index_key(Index::#index, Key::Hash),
+                    range: self.index_key(Index::#index, Key::Range),
+                }
+            }
+        }
     }
 
-    let imports = quote! {
-        use ligmacro::{Index, Key};
+    let uses = quote! {
+        use ligmacro::{Index, Key, IndexKey, IndexKeys};
     };
 
     let (ig, tg, wc) = generics.split_for_impl();
     let impl_ligma = quote! {
         impl #ig LigmaEntity for #ident #tg #wc {
-            fn index_key(&self, index: Index, key: Key) {
+            fn index_key(&self, index: Index, key: Key) -> IndexKey {
                 match index {
-                    #index_match_arms
-                    _ => {
-                        // todo: unknown index for entity
-                        println!("unknown index for entity");
-                    }
+                    #index_key_match
+                    _ => panic!() // unknown index for entity
+                }
+            }
+            fn index_keys(&self, index: Index) -> IndexKeys {
+                match index {
+                    #index_keys_match
+                    _ => panic!() // unknown index for entity
                 }
             }
         }
     };
 
     let o = quote! {
-        #imports
+        #uses
         #impl_ligma
     };
 
     o.into()
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+// dead code!
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     #[test]
+//     fn it_works() {
+//         let result = add(2, 2);
+//         assert_eq!(result, 4);
+//     }
+// }
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+// fn all_attrs<T: Attribute + AttributeIdent + Debug>(input: TokenStream) -> Result<TokenStream> {
+//     let DeriveInput { attrs, data, .. } = syn::parse(input)?;
+//     let a = T::from_attributes(&attrs)?;
+//     println!("{:#?}", a);
+//     Ok(TokenStream::new())
+// }
