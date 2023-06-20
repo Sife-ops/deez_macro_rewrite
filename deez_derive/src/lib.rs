@@ -9,9 +9,6 @@ use syn::{DeriveInput, Field, Ident};
 
 #[proc_macro_derive(Deez, attributes(ligma_schema, ligma_attribute, ligma_ignore))]
 pub fn derive(input: TokenStream) -> TokenStream {
-    // let a = all_attrs::<DeezSchema>(input).unwrap_or_else(|e| e.to_compile_error().into());
-    // let a = all_attrs::<DeezSchema>(input).unwrap();
-
     let DeriveInput { attrs, data, ident, .. } = syn::parse(input).unwrap();
 
     let s = DeezSchema::from_attributes(&attrs).unwrap();
@@ -41,7 +38,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
 
     let struct_data = match data {
         syn::Data::Struct(s) => s,
-        _ => panic!(), // not a struct
+        _ => panic!("could not parse struct"),
     };
 
     let mut field_av_map = quote! {};
@@ -64,41 +61,41 @@ pub fn derive(input: TokenStream) -> TokenStream {
                     match attribute.key.as_str() {
                         "hash" => index.hash.composite.push(composite),
                         "range" => index.range.composite.push(composite),
-                        _ => panic!(), // key must be hash or range
+                        _ => panic!("key must be either `hash` or `range`"),
                     }
                 } else {
-                    panic!(); // unknown index
+                    panic!("unknown index: {}", attribute.index);
                 }
             }
         }
 
         let type_name = match &field.ty {
             syn::Type::Path(p) => p.to_token_stream().to_string(),
-            _ => panic!(), // could not parse as type path?
+            _ => panic!("could not parse field type as path"),
         };
 
-        let a = field.ident.as_ref().unwrap();
-        let b = a.to_string();
+        let field_ident = field.ident.as_ref().unwrap();
+        let field_name = field_ident.to_string();
         match type_name.as_str() {
             "String" => {
                 field_av_map = quote! {
                     #field_av_map
-                    m.insert(#b.to_string(), AttributeValue::S(item.#a.clone()));
+                    m.insert(#field_name.to_string(), AttributeValue::S(item.#field_ident.clone()));
                 }
             }
             "f64" => {
                 field_av_map = quote! {
                     #field_av_map
-                    m.insert(#b.to_string(), AttributeValue::N(item.#a.to_string()));
+                    m.insert(#field_name.to_string(), AttributeValue::N(item.#field_ident.to_string()));
                 }
             }
             "bool" => {
                 field_av_map = quote! {
                     #field_av_map
-                    m.insert(#b.to_string(), AttributeValue::Bool(item.#a));
+                    m.insert(#field_name.to_string(), AttributeValue::Bool(item.#field_ident));
                 }
             }
-            _ => panic!(), // unsupported type
+            _ => panic!("unsupported type: {}", type_name),
         }
     }
 
@@ -171,13 +168,13 @@ pub fn derive(input: TokenStream) -> TokenStream {
             pub fn index_key(&self, index: Index, key: Key) -> IndexKey {
                 match index {
                     #index_key_match
-                    _ => panic!() // unknown index for entity
+                    _ => panic!("unknown entity index: {}", index), // todo: sus?
                 }
             }
             pub fn index_keys(&self, index: Index) -> IndexKeys {
                 match index {
                     #index_keys_match
-                    _ => panic!() // unknown index for entity
+                    _ => panic!("unknown entity index: {}", index),
                 }
             }
         }
@@ -332,21 +329,3 @@ struct DeezSchema {
     gsi20_hash: Option<String>,
     gsi20_range: Option<String>,
 }
-
-// dead code!
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     #[test]
-//     fn it_works() {
-//         let result = add(2, 2);
-//         assert_eq!(result, 4);
-//     }
-// }
-
-// fn all_attrs<T: Attribute + AttributeIdent + Debug>(input: TokenStream) -> Result<TokenStream> {
-//     let DeriveInput { attrs, data, .. } = syn::parse(input)?;
-//     let a = T::from_attributes(&attrs)?;
-//     println!("{:#?}", a);
-//     Ok(TokenStream::new())
-// }
