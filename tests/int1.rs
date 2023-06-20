@@ -1,5 +1,7 @@
 #![allow(unused)]
 
+use std::collections::HashMap;
+
 // use ligmacro_derive::*;
 use ligmacro::LigmaEntity;
 
@@ -24,6 +26,7 @@ struct Foo {
     foo_string4: String,
     foo_string5: String,
     foo_string6: String,
+    foo_bool: bool,
     #[ligma_attribute(index = "gsi1", key = "range")]
     foo_num1: f64,
     #[ligma_ignore(ignore)]
@@ -43,13 +46,17 @@ fn test1() {
         bar: Bar {
             deez: "ddez".to_string(),
         },
+        foo_bool: true,
     };
 
-    let b = a.index_key(Index::Gsi1, Key::Range);
-    let c = a.index_keys(Index::Primary);
+    let x: HashMap<String, AttributeValue> = a.into();
+    println!("{:#?}", x);
 
-    println!("{:#?}", b);
-    println!("{:#?}", c);
+    // let b = a.index_key(Index::Gsi1, Key::Range);
+    // let c = a.index_keys(Index::Primary);
+
+    // println!("{:#?}", b);
+    // println!("{:#?}", c);
 
     // let e = FooIndex::Gsi1;
     // let aaa = FOO_GSI1;

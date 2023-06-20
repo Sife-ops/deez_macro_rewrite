@@ -44,24 +44,6 @@ struct LigmaIgnore {
     #[attribute(optional = false, default = true)]
     ignore: bool,
 }
-////////////////////////////////////////////////////////////////////////////////
-
-struct IndexKeys {
-    index: Ident,
-    hash: IndexKey,
-    range: IndexKey,
-}
-
-#[derive(Default)]
-struct IndexKey {
-    field: String,
-    composite: Vec<Composite>,
-}
-
-struct Composite {
-    position: usize,
-    syn_field: Field,
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// helper macros
@@ -70,8 +52,7 @@ macro_rules! insert_index {
         $map.insert(
             $name,
             IndexKeys {
-                // index: Index::$index,
-                index: format_ident!($index),
+                index: format_ident!($index), // todo: pass in ident
                 hash: IndexKey {
                     field: $hash,
                     ..Default::default()
@@ -102,7 +83,7 @@ macro_rules! compose_key {
                 .iter()
                 .find(|c| c.position == i)
                 .unwrap();
-            let ident = composite.syn_field.ident.clone().unwrap();
+            let ident = composite.syn_field.ident.as_ref().unwrap();
             let ident_string = ident.to_string();
 
             composed = quote! {
@@ -113,7 +94,25 @@ macro_rules! compose_key {
         composed
     }};
 }
+
 ////////////////////////////////////////////////////////////////////////////////
+/// asdf
+struct IndexKeys {
+    index: Ident,
+    hash: IndexKey,
+    range: IndexKey,
+}
+
+#[derive(Default)]
+struct IndexKey {
+    field: String,
+    composite: Vec<Composite>,
+}
+
+struct Composite {
+    position: usize,
+    syn_field: Field,
+}
 
 #[proc_macro_derive(LigmaEntity, attributes(ligma_schema, ligma_attribute, ligma_ignore))]
 pub fn derive(input: TokenStream) -> TokenStream {
@@ -139,6 +138,8 @@ pub fn derive(input: TokenStream) -> TokenStream {
         syn::Data::Struct(s) => s,
         _ => panic!(), // not a struct
     };
+
+    let mut field_av_map = quote! {};
 
     for field in struct_data.fields.iter() {
         if field.attrs.len() > 0 {
@@ -171,14 +172,36 @@ pub fn derive(input: TokenStream) -> TokenStream {
             _ => panic!(), // could not parse as type path?
         };
 
+        let a = field.ident.as_ref().unwrap();
+        let b = a.to_string();
         match type_name.as_str() {
-            "String" | "f64" | "bool" => {}
+            // "String" | "f64" | "bool" => {}
+            "String" => {
+                field_av_map = quote! {
+                    #field_av_map
+                    m.insert(#b.to_string(), AttributeValue::S(item.#a.clone()));
+                }
+            }
+            "f64" => {
+                field_av_map = quote! {
+                    #field_av_map
+                    m.insert(#b.to_string(), AttributeValue::N(item.#a.to_string()));
+                }
+            }
+            "bool" => {
+                field_av_map = quote! {
+                    #field_av_map
+                    m.insert(#b.to_string(), AttributeValue::Bool(item.#a));
+                }
+            }
             _ => panic!(), // unsupported type
         }
     }
 
     let mut index_key_match = quote! {};
     let mut index_keys_match = quote! {};
+    let mut index_av_map = quote! {};
+
     for (k, v) in m.iter() {
         let hash_composite = compose_key!(v.hash);
         let range_composite = compose_key!(v.range);
@@ -222,11 +245,22 @@ pub fn derive(input: TokenStream) -> TokenStream {
                     range: self.index_key(Index::#index, Key::Range),
                 }
             }
-        }
+        };
+
+        index_av_map = quote! {
+            #index_av_map
+            {
+                let keys = item.index_keys(Index::#index);
+                // todo: format `:pk` etc.
+                m.insert(keys.hash.field, AttributeValue::S(keys.hash.composite));
+                m.insert(keys.range.field, AttributeValue::S(keys.range.composite));
+            }
+        };
     }
 
     let uses = quote! {
         use ligmacro::{Index, Key, IndexKey, IndexKeys};
+        use aws_sdk_dynamodb::types::AttributeValue;
     };
 
     let (ig, tg, wc) = generics.split_for_impl();
@@ -247,9 +281,39 @@ pub fn derive(input: TokenStream) -> TokenStream {
         }
     };
 
+    let impl_self = quote! {
+        impl #ident {
+            pub fn index_key(&self, index: Index, key: Key) -> IndexKey {
+                match index {
+                    #index_key_match
+                    _ => panic!() // unknown index for entity
+                }
+            }
+            pub fn index_keys(&self, index: Index) -> IndexKeys {
+                match index {
+                    #index_keys_match
+                    _ => panic!() // unknown index for entity
+                }
+            }
+        }
+    };
+
+    let impl_from = quote! {
+        impl From<#ident> for HashMap<String, AttributeValue> {
+            fn from(item: #ident) -> HashMap<String, AttributeValue> {
+                let mut m: HashMap<String, AttributeValue> = HashMap::new();
+                #field_av_map
+                #index_av_map
+                m
+            }
+        }
+    };
+
     let o = quote! {
         #uses
         #impl_ligma
+        #impl_self
+        #impl_from
     };
 
     o.into()
