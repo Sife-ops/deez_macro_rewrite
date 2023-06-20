@@ -54,7 +54,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71dd52191aae121e8611f1e8dc3e324dd0dd1dee1e6dd91d10ee07a3cfb4d9d8"
 
 [[package]]
-name = "ligmacro_derive"
+name = "deez_derive"
 version = "0.1.0"
 dependencies = [
  "attribute-derive",

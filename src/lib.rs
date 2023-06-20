@@ -1,8 +1,4 @@
-pub use ligmacro_derive::LigmaEntity;
-
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+pub use deez_derive::Deez;
 
 #[derive(Eq, Hash, PartialEq, Debug)]
 pub enum Index {
@@ -45,12 +41,6 @@ pub struct IndexKey {
 pub struct IndexKeys {
     pub hash: IndexKey,
     pub range: IndexKey,
-}
-
-pub trait LigmaEntity {
-    // todo: index_key_attribute_value
-    fn index_key(&self, index: Index, key: Key) -> IndexKey;
-    fn index_keys(&self, index: Index) -> IndexKeys;
 }
 
 // todo: better tests lmao

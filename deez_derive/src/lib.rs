@@ -7,14 +7,14 @@ use quote::{format_ident, quote, ToTokens};
 use std::{collections::HashMap, fmt::Debug};
 use syn::{DeriveInput, Field, Ident};
 
-#[proc_macro_derive(LigmaEntity, attributes(ligma_schema, ligma_attribute, ligma_ignore))]
+#[proc_macro_derive(Deez, attributes(ligma_schema, ligma_attribute, ligma_ignore))]
 pub fn derive(input: TokenStream) -> TokenStream {
-    // let a = all_attrs::<LigmaSchema>(input).unwrap_or_else(|e| e.to_compile_error().into());
-    // let a = all_attrs::<LigmaSchema>(input).unwrap();
+    // let a = all_attrs::<DeezSchema>(input).unwrap_or_else(|e| e.to_compile_error().into());
+    // let a = all_attrs::<DeezSchema>(input).unwrap();
 
     let DeriveInput { attrs, data, ident, .. } = syn::parse(input).unwrap();
 
-    let s = LigmaSchema::from_attributes(&attrs).unwrap();
+    let s = DeezSchema::from_attributes(&attrs).unwrap();
 
     let mut m = HashMap::new();
     insert_index!(m, "primary".to_string(), s.hash, s.range, format_ident!("Primary"));
@@ -48,13 +48,13 @@ pub fn derive(input: TokenStream) -> TokenStream {
 
     for field in struct_data.fields.iter() {
         if field.attrs.len() > 0 {
-            if let Ok(attribute) = LigmaIgnore::from_attributes(&field.attrs) {
+            if let Ok(attribute) = DeezIgnore::from_attributes(&field.attrs) {
                 if attribute.ignore {
                     continue;
                 }
             }
 
-            if let Ok(attribute) = LigmaAttribute::from_attributes(&field.attrs) {
+            if let Ok(attribute) = DeezAttribute::from_attributes(&field.attrs) {
                 let composite = Composite {
                     position: attribute.position,
                     syn_field: field.clone(),
@@ -162,7 +162,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
     }
 
     let uses = quote! {
-        use ligmacro::{Index, Key, IndexKey, IndexKeys};
+        use deez::{Index, Key, IndexKey, IndexKeys};
         use aws_sdk_dynamodb::types::AttributeValue;
     };
 
@@ -226,7 +226,7 @@ struct Composite {
 /// attributes
 #[derive(Attribute, Debug)]
 #[attribute(ident = ligma_attribute)]
-struct LigmaAttribute {
+struct DeezAttribute {
     index: String,
     key: String,
     #[attribute(default = 0)]
@@ -236,7 +236,7 @@ struct LigmaAttribute {
 // todo: cant use empty struct???
 #[derive(Attribute, Debug)]
 #[attribute(ident = ligma_ignore)]
-struct LigmaIgnore {
+struct DeezIgnore {
     #[attribute(optional = false, default = true)]
     ignore: bool,
 }
@@ -244,7 +244,7 @@ struct LigmaIgnore {
 #[derive(Attribute, Debug)]
 #[attribute(ident = ligma_schema)]
 // #[attribute(invalid_field = "ok")]
-struct LigmaSchema {
+struct DeezSchema {
     service: String,
     table: String,
     entity: String,

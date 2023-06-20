@@ -1,11 +1,11 @@
-use ligmacro::LigmaEntity;
+use deez::Deez;
 use std::collections::HashMap;
 
 struct Bar {
     pub deez: String,
 }
 
-#[derive(LigmaEntity)]
+#[derive(Deez)]
 #[ligma_schema(table = "foo_table", service = "foo_service", entity = "foo_entity")]
 #[ligma_schema(hash = "pk", range = "sk")]
 #[ligma_schema(gsi1 = "gsi1", gsi1_hash = "gsi1pk", gsi1_range = "gsi1sk")]
