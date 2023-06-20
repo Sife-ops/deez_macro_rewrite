@@ -1,20 +1,14 @@
-#![allow(unused)]
-
+use ligmacro::LigmaEntity;
 use std::collections::HashMap;
 
-// use ligmacro_derive::*;
-use ligmacro::LigmaEntity;
-
 struct Bar {
-    deez: String,
+    pub deez: String,
 }
 
 #[derive(LigmaEntity)]
 #[ligma_schema(table = "foo_table", service = "foo_service", entity = "foo_entity")]
 #[ligma_schema(hash = "pk", range = "sk")]
 #[ligma_schema(gsi1 = "gsi1", gsi1_hash = "gsi1pk", gsi1_range = "gsi1sk")]
-// #[ligma_primary_index(hash = "pk", range = "sk")]
-// #[ligma_gsi1(index = "gsi1", hash = "gsi1pk", range = "gsi1sk")]
 struct Foo {
     #[ligma_attribute(index = "primary", key = "hash")]
     foo_string1: String,

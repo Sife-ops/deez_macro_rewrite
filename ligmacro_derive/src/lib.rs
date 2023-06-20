@@ -1,138 +1,43 @@
-#![allow(unused)]
+mod macro_rules;
 
-use attribute_derive::{Attribute, AttributeIdent};
+use attribute_derive::Attribute;
+use macro_rules::{compose_key, insert_gsi, insert_index};
 use proc_macro::{self, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 use std::{collections::HashMap, fmt::Debug};
-use syn::{DeriveInput, Field, Ident, Result};
-
-////////////////////////////////////////////////////////////////////////////////
-/// attribute helpers
-#[derive(Attribute, Debug)]
-#[attribute(ident = ligma_schema)]
-// #[attribute(invalid_field = "ok")]
-struct LigmaSchema {
-    service: String,
-    table: String,
-    entity: String,
-
-    hash: String,
-    range: String,
-
-    gsi1: Option<String>,
-    gsi1_hash: Option<String>,
-    gsi1_range: Option<String>,
-
-    gsi2: Option<String>,
-    gsi2_hash: Option<String>,
-    gsi2_range: Option<String>,
-}
-
-#[derive(Attribute, Debug)]
-#[attribute(ident = ligma_attribute)]
-struct LigmaAttribute {
-    index: String,
-    key: String,
-    #[attribute(default = 0)]
-    position: usize,
-}
-
-// todo: cant use empty struct???
-#[derive(Attribute, Debug)]
-#[attribute(ident = ligma_ignore)]
-struct LigmaIgnore {
-    #[attribute(optional = false, default = true)]
-    ignore: bool,
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// helper macros
-macro_rules! insert_index {
-    ($map: ident, $name: expr, $hash: expr, $range: expr, $index: expr) => {
-        $map.insert(
-            $name,
-            IndexKeys {
-                index: format_ident!($index), // todo: pass in ident
-                hash: IndexKey {
-                    field: $hash,
-                    ..Default::default()
-                },
-                range: IndexKey {
-                    field: $range,
-                    ..Default::default()
-                },
-            },
-        );
-    };
-}
-
-macro_rules! insert_gsi {
-    ($map: ident, $name: expr, $hash: expr, $range: expr, $index: expr) => {
-        if let Some(g) = $name {
-            insert_index!($map, g, $hash.unwrap(), $range.unwrap(), $index);
-        }
-    };
-}
-
-macro_rules! compose_key {
-    ($index_key: expr) => {{
-        let mut composed = quote! {};
-        for (i, _) in $index_key.composite.iter().enumerate() {
-            let composite = $index_key
-                .composite
-                .iter()
-                .find(|c| c.position == i)
-                .unwrap();
-            let ident = composite.syn_field.ident.as_ref().unwrap();
-            let ident_string = ident.to_string();
-
-            composed = quote! {
-                #composed
-                composed.push_str(&format!("#{}_{}", #ident_string, self.#ident));
-            };
-        }
-        composed
-    }};
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// asdf
-struct IndexKeys {
-    index: Ident,
-    hash: IndexKey,
-    range: IndexKey,
-}
-
-#[derive(Default)]
-struct IndexKey {
-    field: String,
-    composite: Vec<Composite>,
-}
-
-struct Composite {
-    position: usize,
-    syn_field: Field,
-}
+use syn::{DeriveInput, Field, Ident};
 
 #[proc_macro_derive(LigmaEntity, attributes(ligma_schema, ligma_attribute, ligma_ignore))]
 pub fn derive(input: TokenStream) -> TokenStream {
     // let a = all_attrs::<LigmaSchema>(input).unwrap_or_else(|e| e.to_compile_error().into());
     // let a = all_attrs::<LigmaSchema>(input).unwrap();
 
-    let DeriveInput {
-        attrs,
-        data,
-        ident,
-        generics,
-        ..
-    } = syn::parse(input).unwrap();
+    let DeriveInput { attrs, data, ident, .. } = syn::parse(input).unwrap();
 
     let s = LigmaSchema::from_attributes(&attrs).unwrap();
 
     let mut m = HashMap::new();
-    insert_index!(m, "primary".to_string(), s.hash, s.range, "Primary");
-    insert_gsi!(m, s.gsi1, s.gsi1_hash, s.gsi1_range, "Gsi1");
-    insert_gsi!(m, s.gsi2, s.gsi2_hash, s.gsi2_range, "Gsi2");
+    insert_index!(m, "primary".to_string(), s.hash, s.range, format_ident!("Primary"));
+    insert_gsi!(m, s.gsi1, s.gsi1_hash, s.gsi1_range, format_ident!("Gsi1"));
+    insert_gsi!(m, s.gsi2, s.gsi2_hash, s.gsi2_range, format_ident!("Gsi2"));
+    insert_gsi!(m, s.gsi3, s.gsi3_hash, s.gsi3_range, format_ident!("Gsi3"));
+    insert_gsi!(m, s.gsi4, s.gsi4_hash, s.gsi4_range, format_ident!("Gsi4"));
+    insert_gsi!(m, s.gsi5, s.gsi5_hash, s.gsi5_range, format_ident!("Gsi5"));
+    insert_gsi!(m, s.gsi6, s.gsi6_hash, s.gsi6_range, format_ident!("Gsi6"));
+    insert_gsi!(m, s.gsi7, s.gsi7_hash, s.gsi7_range, format_ident!("Gsi7"));
+    insert_gsi!(m, s.gsi8, s.gsi8_hash, s.gsi8_range, format_ident!("Gsi8"));
+    insert_gsi!(m, s.gsi9, s.gsi9_hash, s.gsi9_range, format_ident!("Gsi9"));
+    insert_gsi!(m, s.gsi10, s.gsi10_hash, s.gsi10_range, format_ident!("Gsi10"));
+    insert_gsi!(m, s.gsi11, s.gsi11_hash, s.gsi11_range, format_ident!("Gsi11"));
+    insert_gsi!(m, s.gsi12, s.gsi12_hash, s.gsi12_range, format_ident!("Gsi12"));
+    insert_gsi!(m, s.gsi13, s.gsi13_hash, s.gsi13_range, format_ident!("Gsi13"));
+    insert_gsi!(m, s.gsi14, s.gsi14_hash, s.gsi14_range, format_ident!("Gsi14"));
+    insert_gsi!(m, s.gsi15, s.gsi15_hash, s.gsi15_range, format_ident!("Gsi15"));
+    insert_gsi!(m, s.gsi16, s.gsi16_hash, s.gsi16_range, format_ident!("Gsi16"));
+    insert_gsi!(m, s.gsi17, s.gsi17_hash, s.gsi17_range, format_ident!("Gsi17"));
+    insert_gsi!(m, s.gsi18, s.gsi18_hash, s.gsi18_range, format_ident!("Gsi18"));
+    insert_gsi!(m, s.gsi19, s.gsi19_hash, s.gsi19_range, format_ident!("Gsi19"));
+    insert_gsi!(m, s.gsi20, s.gsi20_hash, s.gsi20_range, format_ident!("Gsi20"));
 
     let struct_data = match data {
         syn::Data::Struct(s) => s,
@@ -175,7 +80,6 @@ pub fn derive(input: TokenStream) -> TokenStream {
         let a = field.ident.as_ref().unwrap();
         let b = a.to_string();
         match type_name.as_str() {
-            // "String" | "f64" | "bool" => {}
             "String" => {
                 field_av_map = quote! {
                     #field_av_map
@@ -202,7 +106,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
     let mut index_keys_match = quote! {};
     let mut index_av_map = quote! {};
 
-    for (k, v) in m.iter() {
+    for (_, v) in m.iter() {
         let hash_composite = compose_key!(v.hash);
         let range_composite = compose_key!(v.range);
 
@@ -251,7 +155,6 @@ pub fn derive(input: TokenStream) -> TokenStream {
             #index_av_map
             {
                 let keys = item.index_keys(Index::#index);
-                // todo: format `:pk` etc.
                 m.insert(keys.hash.field, AttributeValue::S(keys.hash.composite));
                 m.insert(keys.range.field, AttributeValue::S(keys.range.composite));
             }
@@ -261,24 +164,6 @@ pub fn derive(input: TokenStream) -> TokenStream {
     let uses = quote! {
         use ligmacro::{Index, Key, IndexKey, IndexKeys};
         use aws_sdk_dynamodb::types::AttributeValue;
-    };
-
-    let (ig, tg, wc) = generics.split_for_impl();
-    let impl_ligma = quote! {
-        impl #ig LigmaEntity for #ident #tg #wc {
-            fn index_key(&self, index: Index, key: Key) -> IndexKey {
-                match index {
-                    #index_key_match
-                    _ => panic!() // unknown index for entity
-                }
-            }
-            fn index_keys(&self, index: Index) -> IndexKeys {
-                match index {
-                    #index_keys_match
-                    _ => panic!() // unknown index for entity
-                }
-            }
-        }
     };
 
     let impl_self = quote! {
@@ -311,12 +196,141 @@ pub fn derive(input: TokenStream) -> TokenStream {
 
     let o = quote! {
         #uses
-        #impl_ligma
         #impl_self
         #impl_from
     };
 
     o.into()
+}
+
+////////////////////////////////////////////////////////////////////////////////
+///
+struct IndexKeys {
+    index: Ident,
+    hash: IndexKey,
+    range: IndexKey,
+}
+
+#[derive(Default)]
+struct IndexKey {
+    field: String,
+    composite: Vec<Composite>,
+}
+
+struct Composite {
+    position: usize,
+    syn_field: Field,
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// attributes
+#[derive(Attribute, Debug)]
+#[attribute(ident = ligma_attribute)]
+struct LigmaAttribute {
+    index: String,
+    key: String,
+    #[attribute(default = 0)]
+    position: usize,
+}
+
+// todo: cant use empty struct???
+#[derive(Attribute, Debug)]
+#[attribute(ident = ligma_ignore)]
+struct LigmaIgnore {
+    #[attribute(optional = false, default = true)]
+    ignore: bool,
+}
+
+#[derive(Attribute, Debug)]
+#[attribute(ident = ligma_schema)]
+// #[attribute(invalid_field = "ok")]
+struct LigmaSchema {
+    service: String,
+    table: String,
+    entity: String,
+
+    hash: String,
+    range: String,
+
+    gsi1: Option<String>,
+    gsi1_hash: Option<String>,
+    gsi1_range: Option<String>,
+
+    gsi2: Option<String>,
+    gsi2_hash: Option<String>,
+    gsi2_range: Option<String>,
+
+    gsi3: Option<String>,
+    gsi3_hash: Option<String>,
+    gsi3_range: Option<String>,
+
+    gsi4: Option<String>,
+    gsi4_hash: Option<String>,
+    gsi4_range: Option<String>,
+
+    gsi5: Option<String>,
+    gsi5_hash: Option<String>,
+    gsi5_range: Option<String>,
+
+    gsi6: Option<String>,
+    gsi6_hash: Option<String>,
+    gsi6_range: Option<String>,
+
+    gsi7: Option<String>,
+    gsi7_hash: Option<String>,
+    gsi7_range: Option<String>,
+
+    gsi8: Option<String>,
+    gsi8_hash: Option<String>,
+    gsi8_range: Option<String>,
+
+    gsi9: Option<String>,
+    gsi9_hash: Option<String>,
+    gsi9_range: Option<String>,
+
+    gsi10: Option<String>,
+    gsi10_hash: Option<String>,
+    gsi10_range: Option<String>,
+
+    gsi11: Option<String>,
+    gsi11_hash: Option<String>,
+    gsi11_range: Option<String>,
+
+    gsi12: Option<String>,
+    gsi12_hash: Option<String>,
+    gsi12_range: Option<String>,
+
+    gsi13: Option<String>,
+    gsi13_hash: Option<String>,
+    gsi13_range: Option<String>,
+
+    gsi14: Option<String>,
+    gsi14_hash: Option<String>,
+    gsi14_range: Option<String>,
+
+    gsi15: Option<String>,
+    gsi15_hash: Option<String>,
+    gsi15_range: Option<String>,
+
+    gsi16: Option<String>,
+    gsi16_hash: Option<String>,
+    gsi16_range: Option<String>,
+
+    gsi17: Option<String>,
+    gsi17_hash: Option<String>,
+    gsi17_range: Option<String>,
+
+    gsi18: Option<String>,
+    gsi18_hash: Option<String>,
+    gsi18_range: Option<String>,
+
+    gsi19: Option<String>,
+    gsi19_hash: Option<String>,
+    gsi19_range: Option<String>,
+
+    gsi20: Option<String>,
+    gsi20_hash: Option<String>,
+    gsi20_range: Option<String>,
 }
 
 // dead code!
